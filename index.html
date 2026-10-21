@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -23,6 +24,7 @@
             background-color: #05050a;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             color: #fff;
+            touch-action: none;
         }
         #game-container {
             position: relative;
@@ -46,6 +48,7 @@
             flex-direction: column;
             justify-content: space-between;
             padding: 20px;
+            z-index: 5;
         }
         .hud {
             display: flex;
@@ -82,7 +85,7 @@
             display: none !important;
         }
         h1 {
-            font-size: 48px;
+            font-size: 42px;
             color: #00f3ff;
             text-shadow: 0 0 20px #00f3ff, 0 0 40px #00f3ff;
             margin-bottom: 10px;
@@ -111,7 +114,7 @@
             box-shadow: 0 0 30px rgba(0, 243, 255, 0.9);
         }
         .controls-hint {
-            margin-top: 30px;
+            margin-top: 25px;
             display: flex;
             gap: 15px;
             font-size: 14px;
@@ -126,6 +129,34 @@
             border-radius: 6px;
             color: #00f3ff;
         }
+        /* Mobile Touch Controls */
+        .touch-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+            padding: 0 10px;
+            pointer-events: auto;
+        }
+        .t-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.15);
+            border: 2px solid #00f3ff;
+            color: #fff;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 18px;
+            backdrop-filter: blur(4px);
+        }
+        .t-btn:active {
+            background: rgba(0, 243, 255, 0.4);
+        }
     </style>
 </head>
 <body>
@@ -139,6 +170,14 @@
             </div>
             <div class="coins-val" id="coinDisplay">🪙 0</div>
         </div>
+
+        <!-- 모바일 가상 버튼 -->
+        <div class="touch-controls">
+            <div class="t-btn" id="btnLeft">←</div>
+            <div class="t-btn" id="btnJump">↑</div>
+            <div class="t-btn" id="btnSlide">↓</div>
+            <div class="t-btn" id="btnRight">→</div>
+        </div>
     </div>
 
     <!-- Start Screen -->
@@ -147,9 +186,8 @@
         <p class="subtitle">열차와 장애물을 피해 3D 트랙을 달리세요!</p>
         <button class="btn" id="startBtn">게임 시작</button>
         <div class="controls-hint">
-            <span>레일 이동: <span class="key-badge">←</span> <span class="key-badge">→</span></span>
-            <span>점프: <span class="key-badge">↑</span> / <span class="key-badge">Space</span></span>
-            <span>슬라이딩: <span class="key-badge">↓</span></span>
+            <span>키보드: 방향키 <span class="key-badge">←</span> <span class="key-badge">→</span> <span class="key-badge">↑</span> <span class="key-badge">↓</span></span>
+            <span>모바일: 화면 스와이프 or 버튼 터치</span>
         </div>
     </div>
 
@@ -164,9 +202,7 @@
 <script>
 // --- Audio Controller ---
 class SoundController {
-    constructor() {
-        this.ctx = null;
-    }
+    constructor() { this.ctx = null; }
     init() {
         if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
     }
@@ -229,8 +265,8 @@ dirLight.castShadow = true;
 scene.add(dirLight);
 
 // Constants & Lane Positions
-const LANES = [-3.5, 0, 3.5]; // 3개의 레일 X 위치
-let currentLane = 1; // 가운데 (0, 1, 2)
+const LANES = [-3.5, 0, 3.5];
+let currentLane = 1;
 let isPlaying = false;
 let distance = 0;
 let coins = 0;
@@ -238,7 +274,7 @@ let speed = 0.5;
 let highScore = localStorage.getItem('subway_3d_highscore') || 0;
 document.getElementById('highScoreDisplay').innerText = `${Math.floor(highScore)}m`;
 
-// Ground / Track Grid
+// Ground Track
 const trackGroup = new THREE.Group();
 scene.add(trackGroup);
 
@@ -246,7 +282,6 @@ function createTrackTile(z) {
     const tileGroup = new THREE.Group();
     tileGroup.position.z = z;
 
-    // Road Base
     const geo = new THREE.BoxGeometry(12, 0.2, 20);
     const mat = new THREE.MeshLambertMaterial({ color: 0x11111d });
     const mesh = new THREE.Mesh(geo, mat);
@@ -254,7 +289,6 @@ function createTrackTile(z) {
     mesh.receiveShadow = true;
     tileGroup.add(mesh);
 
-    // 3 Rails
     LANES.forEach(x => {
         const railGeo = new THREE.BoxGeometry(0.3, 0.1, 20);
         const railMat = new THREE.MeshBasicMaterial({ color: 0x00f3ff });
@@ -273,11 +307,10 @@ for (let i = 0; i < 15; i++) {
     trackGroup.add(tile);
 }
 
-// Player (3D Model representation)
+// Player
 const playerGroup = new THREE.Group();
 scene.add(playerGroup);
 
-// Player Body (Box)
 const pGeo = new THREE.BoxGeometry(1.2, 2, 0.8);
 const pMat = new THREE.MeshStandardMaterial({ color: 0x00f3ff, roughness: 0.3 });
 const playerMesh = new THREE.Mesh(pGeo, pMat);
@@ -285,14 +318,13 @@ playerMesh.position.y = 1;
 playerMesh.castShadow = true;
 playerGroup.add(playerMesh);
 
-// Player Visor
 const vGeo = new THREE.BoxGeometry(0.8, 0.3, 0.2);
 const vMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
 const visor = new THREE.Mesh(vGeo, vMat);
 visor.position.set(0, 1.5, -0.35);
 playerGroup.add(visor);
 
-// Player Physics State
+// Player Physics
 let playerY = 0;
 let vy = 0;
 const gravity = -0.025;
@@ -301,11 +333,10 @@ let isGrounded = true;
 let isSliding = false;
 let slideTimer = 0;
 
-// Camera Position Offset
 camera.position.set(0, 5, 8);
 camera.lookAt(0, 2, -10);
 
-// Objects (Obstacles & Coins)
+// Obstacles & Coins
 let obstacles = [];
 let coinObjects = [];
 
@@ -319,7 +350,6 @@ function spawnObstacle() {
     group.position.set(x, 0, z);
 
     if (type === 'TRAIN') {
-        // High/Long Obstacle (Must avoid or slide isn't enough, jump onto or side step)
         const geo = new THREE.BoxGeometry(2.6, 3.5, 12);
         const mat = new THREE.MeshStandardMaterial({ color: 0xff0055 });
         const train = new THREE.Mesh(geo, mat);
@@ -328,7 +358,6 @@ function spawnObstacle() {
         group.add(train);
         group.userData = { type: 'TRAIN', height: 3.5, width: 2.6, depth: 12 };
     } else {
-        // Low Barrier (Jump over)
         const geo = new THREE.BoxGeometry(2.8, 1.2, 0.6);
         const mat = new THREE.MeshStandardMaterial({ color: 0xff9900 });
         const barrier = new THREE.Mesh(geo, mat);
@@ -359,28 +388,60 @@ function spawnCoins() {
     }
 }
 
-// Input Handlers
-window.addEventListener('keydown', (e) => {
-    if (!isPlaying) return;
-    audio.init();
-
-    if (e.key === 'ArrowLeft' && currentLane > 0) {
-        currentLane--;
-    } else if (e.key === 'ArrowRight' && currentLane < 2) {
-        currentLane++;
-    } else if ((e.key === 'ArrowUp' || e.key === ' ') && isGrounded) {
+// Control Functions
+function moveLeft() { if (isPlaying && currentLane > 0) currentLane--; }
+function moveRight() { if (isPlaying && currentLane < 2) currentLane++; }
+function doJump() {
+    if (isPlaying && isGrounded) {
         vy = jumpPower;
         isGrounded = false;
         audio.jump();
-    } else if (e.key === 'ArrowDown' && isGrounded && !isSliding) {
+    }
+}
+function doSlide() {
+    if (isPlaying && isGrounded && !isSliding) {
         isSliding = true;
-        slideTimer = 30; // 30 frames slide
+        slideTimer = 30;
         playerMesh.scale.set(1, 0.5, 1);
         playerMesh.position.y = 0.5;
     }
+}
+
+// Keyboard Input
+window.addEventListener('keydown', (e) => {
+    audio.init();
+    if (e.key === 'ArrowLeft' || e.key === 'a') moveLeft();
+    if (e.key === 'ArrowRight' || e.key === 'd') moveRight();
+    if (e.key === 'ArrowUp' || e.key === 'w' || e.key === ' ') doJump();
+    if (e.key === 'ArrowDown' || e.key === 's') doSlide();
 });
 
-// Game Loop Functions
+// Touch Buttons Input
+document.getElementById('btnLeft').addEventListener('touchstart', (e) => { e.preventDefault(); audio.init(); moveLeft(); });
+document.getElementById('btnRight').addEventListener('touchstart', (e) => { e.preventDefault(); audio.init(); moveRight(); });
+document.getElementById('btnJump').addEventListener('touchstart', (e) => { e.preventDefault(); audio.init(); doJump(); });
+document.getElementById('btnSlide').addEventListener('touchstart', (e) => { e.preventDefault(); audio.init(); doSlide(); });
+
+// Swipe Input
+let touchStartX = 0, touchStartY = 0;
+window.addEventListener('touchstart', (e) => {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+});
+window.addEventListener('touchend', (e) => {
+    if (!isPlaying) return;
+    let dx = e.changedTouches[0].clientX - touchStartX;
+    let dy = e.changedTouches[0].clientY - touchStartY;
+    if (Math.abs(dx) > Math.abs(dy)) {
+        if (dx > 30) moveRight();
+        else if (dx < -30) moveLeft();
+    } else {
+        if (dy < -30) doJump();
+        else if (dy > 30) doSlide();
+    }
+});
+
+// Game Loop
 let spawnTimer = 0;
 
 function resetGame() {
@@ -396,7 +457,6 @@ function resetGame() {
     playerMesh.scale.set(1, 1, 1);
     playerMesh.position.y = 1;
 
-    // Clear old objects
     obstacles.forEach(o => scene.remove(o));
     coinObjects.forEach(c => scene.remove(c));
     obstacles = [];
@@ -407,25 +467,19 @@ function animate() {
     requestAnimationFrame(animate);
 
     if (isPlaying) {
-        // Game Speed & Distance Update
         distance += speed * 0.2;
         speed += 0.0001;
         document.getElementById('scoreDisplay').innerText = `${Math.floor(distance)}m`;
         document.getElementById('coinDisplay').innerText = `🪙 ${coins}`;
 
-        // Track Endless Scrolling
         tiles.forEach(tile => {
             tile.position.z += speed;
-            if (tile.position.z > 20) {
-                tile.position.z -= 15 * 20;
-            }
+            if (tile.position.z > 20) tile.position.z -= 15 * 20;
         });
 
-        // Player Smooth Lane Movement
         const targetX = LANES[currentLane];
-        playerGroup.position.x += (targetX - playerGroup.position.x) * 0.2;
+        playerGroup.position.x += (targetX - playerGroup.position.x) * 0.25;
 
-        // Player Gravity / Jump
         playerY += vy;
         vy += gravity;
         if (playerY <= 0) {
@@ -435,7 +489,6 @@ function animate() {
         }
         playerGroup.position.y = playerY;
 
-        // Player Slide Timer
         if (isSliding) {
             slideTimer--;
             if (slideTimer <= 0) {
@@ -445,19 +498,16 @@ function animate() {
             }
         }
 
-        // Spawning
         spawnTimer++;
         if (spawnTimer % 60 === 0) {
             if (Math.random() < 0.7) spawnObstacle();
             if (Math.random() < 0.5) spawnCoins();
         }
 
-        // Obstacle Update & Collision
         for (let i = obstacles.length - 1; i >= 0; i--) {
             const obs = obstacles[i];
             obs.position.z += speed;
 
-            // Collision Detection Box
             const data = obs.userData;
             const pX = playerGroup.position.x;
             const pY = playerGroup.position.y + (isSliding ? 0.5 : 1);
@@ -479,7 +529,6 @@ function animate() {
             }
         }
 
-        // Coins Update & Collision
         for (let i = coinObjects.length - 1; i >= 0; i--) {
             const coin = coinObjects[i];
             coin.position.z += speed;
@@ -539,14 +588,12 @@ document.getElementById('restartBtn').addEventListener('click', () => {
     document.getElementById('gameOverScreen').classList.add('hidden');
 });
 
-// Resize Event
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// Start Loop
 animate();
 </script>
 </body>
