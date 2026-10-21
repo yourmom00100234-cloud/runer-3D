@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>3D Subway Surfers</title>
     <!-- 구글 애드센스 스크립트 -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2157167042014574" crossorigin="anonymous"></script>
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2157167042014574"
+         crossorigin="anonymous"></script>
     <!-- Three.js 3D Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
@@ -270,7 +271,7 @@ let currentLane = 1;
 let isPlaying = false;
 let distance = 0;
 let coins = 0;
-let speed = 0.45;       // 초기 속도 살짝 조정
+let speed = 0.45;       // 초기 속도
 const maxSpeed = 0.95;  // 속도 상한선 설정 (너무 빨라짐 방지)
 let highScore = localStorage.getItem('subway_3d_highscore') || 0;
 document.getElementById('highScoreDisplay').innerText = `${Math.floor(highScore)}m`;
@@ -334,7 +335,7 @@ let isGrounded = true;
 let isSliding = false;
 let slideTimer = 0;
 
-// 카메라 위치를 살짝 뒤로/위로 조정하여 넓은 시야 확보
+// 카메라 위치를 조정하여 넓은 시야 확보
 camera.position.set(0, 5.5, 9.5);
 camera.lookAt(0, 2, -10);
 
@@ -471,7 +472,7 @@ function animate() {
     if (isPlaying) {
         distance += speed * 0.2;
         
-        // 속도 증가 폭을 완만하게 하고 maxSpeed를 넘지 않도록 제한
+        // 속도 가속 완화 및 maxSpeed 제한
         if (speed < maxSpeed) {
             speed += 0.00005;
         }
